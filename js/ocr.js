@@ -67,7 +67,7 @@ const OCRProcessor = {
                 const worker = await Tesseract.createWorker('eng');
                 const { data: { text } } = await worker.recognize(blob);
                 await worker.terminate();
-                
+
                 console.log(`=== OCR TEXT PAGE ${i} ===\n`, text);
                 const ocrRows = text.split('\n').map(line => ({
                     items: line.split(/\s{2,}|\t/).map(t => ({ text: t.trim(), x: 0, endX: 0 })).filter(it => it.text)
@@ -89,10 +89,10 @@ const OCRProcessor = {
 
         onProgress('Extracting data...', 90);
         const semesters = this.parseRows(allRows);
-        
+
         console.log('=== FINAL SEMESTERS ===');
         console.log(JSON.stringify(semesters, null, 2));
-        
+
         onProgress('Done!', 100);
         return semesters;
     },
@@ -107,7 +107,7 @@ const OCRProcessor = {
             if (!item.str || item.str === '') return;
             const text = item.str;
             if (text.trim() === '') return;
-            
+
             const y = Math.round(item.transform[5]);
             const x = item.transform[4];
             const width = item.width || 0;
@@ -150,7 +150,6 @@ const OCRProcessor = {
                 continue;
             }
 
-            // Reset lastSubject on these stop markers
             if (upperLine.includes('PAGE BREAK') ||
                 (upperLine.includes('COURSE NAME') && upperLine.includes('CODE')) ||
                 upperLine.match(/\bSGPA\b/) ||
@@ -174,7 +173,7 @@ const OCRProcessor = {
             }
 
             const subject = this.extractSubjectFromRow(row);
-            
+
             if (subject) {
                 const isDup = currentSemester.subjects.some(
                     s => s.code === subject.code && s.code
@@ -185,7 +184,6 @@ const OCRProcessor = {
                     console.log(`  + Added: ${subject.code} | ${subject.name} | ${subject.grade} | ${subject.credits}`);
                 }
             } else {
-                // Check if this is a name continuation row
                 if (lastSubject && this.isNameContinuation(row, lineRaw)) {
                     const continuationText = this.extractNameContinuation(row);
                     if (continuationText) {
@@ -193,7 +191,6 @@ const OCRProcessor = {
                         console.log(`  ↳ Appended to ${lastSubject.code}: "${continuationText}"`);
                     }
                 } else {
-                    // If row is not a continuation, clear lastSubject to prevent leaking
                     lastSubject = null;
                 }
             }
@@ -203,29 +200,21 @@ const OCRProcessor = {
             semesters.push(currentSemester);
         }
 
+        // ✅ FIX: Don't deduplicate here - just return raw parsed semesters
+        // Deduplication (merging) was causing old data to persist
         return this.deduplicateSemesters(semesters);
     },
 
-    /**
-     * STRICT continuation check:
-     * - Must be PURE TEXT (no numbers, no codes, no special tokens)
-     * - Must be on the left side (course name column area)
-     * - Must NOT contain footer/summary keywords
-     */
     isNameContinuation(row, lineRaw) {
         if (!lineRaw || lineRaw.trim().length < 2) return false;
-        
+
         const upper = lineRaw.toUpperCase();
-        
-        // Reject if contains course code
+
         if (/\b[A-Z]{2,4}\d{3}[A-Z]?\b/.test(lineRaw)) return false;
-        
-        // Reject if contains any numbers (continuations are pure text)
         if (/\d/.test(lineRaw)) return false;
-        
-        // Reject footer/summary keywords
+
         const stopKeywords = [
-            'TOTAL', 'EARNED', 'CREDITS', 'SGPA', 'CGPA', 
+            'TOTAL', 'EARNED', 'CREDITS', 'SGPA', 'CGPA',
             'CONTROLLER', 'EXAMINATION', 'PROGRAM', 'BRANCH',
             'CANDIDATE', 'COLLEGE', 'REGISTER', 'SEMESTER',
             'GRADE CARD', 'MONTH', 'YEAR', 'KTU', 'B.TECH',
@@ -234,36 +223,29 @@ const OCRProcessor = {
         for (const kw of stopKeywords) {
             if (upper.includes(kw)) return false;
         }
-        
-        // Reject if it's just a single grade letter or short token
+
         if (/^\s*(S|A\+?|B\+?|C\+?|D|P|FE|F|I)\s*$/i.test(lineRaw.trim())) return false;
-        
-        // Reject dates
+
         if (/\b(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER|JAN|FEB|MAR|APR|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/i.test(lineRaw)) return false;
-        
-        // Get first item position - must be on left side (course name column)
+
         const firstItem = row.items[0];
         if (!firstItem || firstItem.x > 150) return false;
-        
-        // Reject if any item is far right (would be in code/grade/credits columns)
+
         for (const it of row.items) {
-            if (it.x > 240) return false; // anything beyond course name column = not continuation
+            if (it.x > 240) return false;
         }
-        
-        // Must contain mostly letters
+
         const letters = lineRaw.replace(/[^A-Za-z]/g, '');
         const total = lineRaw.replace(/\s/g, '').length;
         if (letters.length < 3) return false;
-        if (total > 0 && (letters.length / total) < 0.7) return false; // must be at least 70% letters
-        
+        if (total > 0 && (letters.length / total) < 0.7) return false;
+
         return true;
     },
 
     extractNameContinuation(row) {
-        // Only take items in course name column (x < 240)
         const leftItems = row.items.filter(it => it.x < 240);
         if (leftItems.length === 0) return null;
-        
         return leftItems.map(it => it.text).join(' ').trim();
     },
 
@@ -276,7 +258,7 @@ const OCRProcessor = {
             const t = it.text.trim();
             return /^[A-Z]{2,4}\d{3}[A-Z]?$/.test(t);
         });
-        
+
         if (codeIdx === -1) return null;
 
         const code = items[codeIdx].text.trim();
@@ -295,7 +277,7 @@ const OCRProcessor = {
                     continue;
                 }
             }
-            
+
             if (grade !== null && credits === null) {
                 const cleaned = tok.replace(/[^\d.]/g, '');
                 const num = parseFloat(cleaned);
@@ -390,11 +372,11 @@ const OCRProcessor = {
 
     normalizeGrade(grade) {
         if (grade === null || grade === undefined) return null;
-        
+
         let str = String(grade).toUpperCase();
         str = str.replace(/\s+/g, '');
         str = str.replace(/[^A-Z0-9+]/g, '');
-        
+
         if (!str) return null;
 
         const validGrades = ['S', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'P', 'F', 'FE', 'I'];
@@ -414,7 +396,7 @@ const OCRProcessor = {
         if (str.indexOf('B+') === 0) return 'B+';
         if (str.indexOf('C+') === 0) return 'C+';
         if (str.indexOf('FE') === 0) return 'FE';
-        
+
         const firstChar = str.charAt(0);
         if (['S', 'A', 'B', 'C', 'D', 'P', 'F', 'I'].indexOf(firstChar) !== -1) {
             if (str.charAt(1) === '+' && ['A', 'B', 'C'].indexOf(firstChar) !== -1) {
@@ -426,17 +408,15 @@ const OCRProcessor = {
         return null;
     },
 
+    // ✅ FIX: deduplicateSemesters now REPLACES instead of MERGING
+    // This ensures re-uploaded semesters always show fresh data
     deduplicateSemesters(semesters) {
         const map = new Map();
         semesters.forEach(sem => {
             if (map.has(sem.semester)) {
-                const existing = map.get(sem.semester);
-                sem.subjects.forEach(sub => {
-                    const isDup = existing.subjects.some(
-                        e => e.code === sub.code && e.code
-                    );
-                    if (!isDup) existing.subjects.push(sub);
-                });
+                // ✅ REPLACE existing semester with latest parsed data
+                // (last occurrence wins - most recently parsed data is authoritative)
+                map.set(sem.semester, { ...sem, subjects: [...sem.subjects] });
             } else {
                 map.set(sem.semester, { ...sem, subjects: [...sem.subjects] });
             }

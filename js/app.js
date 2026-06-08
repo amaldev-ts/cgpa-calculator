@@ -3,16 +3,18 @@ const App = {
     semesters: [],
     savedDataExists: false,
     savedDataCache: null,
+    _initialized: false,
+    _processing: false,
 
     init() {
+        if (this._initialized) return;
+        this._initialized = true;
+
         this.checkForSavedData();
         this.bindEvents();
         this.render();
     },
 
-    /**
-     * Check if there's saved data and show restore modal if so
-     */
     checkForSavedData() {
         try {
             const saved = localStorage.getItem('gpa-semesters');
@@ -28,27 +30,19 @@ const App = {
         } catch (e) {
             console.warn('Could not check saved data', e);
         }
-        // No saved data - start blank
         this.semesters = [];
     },
 
-    /**
-     * Show restore modal with semester count
-     */
     showRestoreModal(semCount) {
         const modal = document.getElementById('restoreModal');
         const countEl = document.getElementById('restoreSemCount');
         if (modal && countEl) {
             countEl.textContent = semCount;
             modal.classList.remove('hidden');
-            // Prevent body scroll while modal open
             document.body.style.overflow = 'hidden';
         }
     },
 
-    /**
-     * Hide restore modal
-     */
     hideRestoreModal() {
         const modal = document.getElementById('restoreModal');
         if (modal) {
@@ -57,9 +51,6 @@ const App = {
         }
     },
 
-    /**
-     * User chose to restore previous data
-     */
     handleRestore() {
         if (this.savedDataCache) {
             this.semesters = this.savedDataCache;
@@ -69,9 +60,6 @@ const App = {
         this.hideRestoreModal();
     },
 
-    /**
-     * User chose to start fresh - keep old data in storage but don't load it
-     */
     handleStartFresh() {
         this.semesters = [];
         this.render();
@@ -131,10 +119,9 @@ const App = {
             UI.showToast('Excel exported successfully!', 'success');
         });
 
-        // Restore modal buttons
         const restoreBtn = document.getElementById('restoreBtn');
         const startFreshBtn = document.getElementById('startFreshBtn');
-        
+
         if (restoreBtn) {
             restoreBtn.addEventListener('click', () => this.handleRestore());
         }
@@ -142,12 +129,10 @@ const App = {
             startFreshBtn.addEventListener('click', () => this.handleStartFresh());
         }
 
-        // Close modal on overlay click (optional - treat as Start Fresh)
         const modal = document.getElementById('restoreModal');
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    // Clicking outside the modal content = treat as start fresh
                     this.handleStartFresh();
                 }
             });
@@ -156,74 +141,83 @@ const App = {
 
     async handleFiles(files) {
         if (!files || files.length === 0) return;
+        if (this._processing) return;
+        this._processing = true;
 
-        for (const file of files) {
-            try {
-                UI.showToast(`Processing: ${file.name}`, 'info');
+        try {
+            // ✅ Collect all semesters from this upload batch
+            const allExtractedSemesters = [];
 
-                const extractedSemesters = await OCRProcessor.processFile(
-                    file,
-                    (text, pct) => UI.updateProgress(text, pct)
-                );
+            for (const file of files) {
+                try {
+                    UI.showToast(`Processing: ${file.name}`, 'info');
 
-                if (extractedSemesters.length === 0) {
-                    UI.showToast('Could not extract data. Please enter manually.', 'error');
-                    continue;
-                }
-
-                extractedSemesters.forEach(newSem => {
-                    newSem.subjects = newSem.subjects.filter(s =>
-                        s &&
-                        s.code &&
-                        s.code.trim() !== '' &&
-                        s.grade &&
-                        s.grade.trim() !== '' &&
-                        s.credits !== undefined &&
-                        s.credits !== '' &&
-                        s.credits !== null &&
-                        !isNaN(parseFloat(s.credits))
+                    const extractedSemesters = await OCRProcessor.processFile(
+                        file,
+                        (text, pct) => UI.updateProgress(text, pct)
                     );
 
-                    if (newSem.subjects.length === 0) return;
-
-                    const existingIndex = this.semesters.findIndex(s => s.semester === newSem.semester);
-                    
-                    if (existingIndex !== -1) {
-                        const existing = this.semesters[existingIndex];
-                        const manualSubjects = existing.subjects.filter(s => {
-                            return s && s.code && !newSem.subjects.some(ns => ns.code === s.code);
-                        });
-                        existing.subjects = [...newSem.subjects, ...manualSubjects];
-                        existing.subjects = existing.subjects.filter(s =>
-                            s && (
-                                (s.name && s.name.trim() !== '') ||
-                                (s.code && s.code.trim() !== '') ||
-                                (s.grade && s.grade.trim() !== '') ||
-                                (s.credits !== '' && s.credits !== undefined && s.credits !== null)
-                            )
-                        );
-                    } else {
-                        this.semesters.push(newSem);
+                    if (extractedSemesters.length === 0) {
+                        UI.showToast(`Could not extract data from ${file.name}.`, 'error');
+                        continue;
                     }
-                });
 
-                this.semesters.sort((a, b) => a.semester - b.semester);
+                    extractedSemesters.forEach(newSem => {
+                        // Clean extracted subjects
+                        newSem.subjects = newSem.subjects.filter(s =>
+                            s &&
+                            s.code &&
+                            s.code.trim() !== '' &&
+                            s.grade &&
+                            s.grade.trim() !== '' &&
+                            s.credits !== undefined &&
+                            s.credits !== '' &&
+                            s.credits !== null &&
+                            !isNaN(parseFloat(s.credits))
+                        );
 
-                UI.showToast(
-                    `Extracted ${extractedSemesters.length} semester(s). Please verify grades & credits.`,
-                    'success'
-                );
-            } catch (err) {
-                console.error('Processing error:', err);
-                UI.showToast(`Error processing ${file.name}: ${err.message}`, 'error');
+                        if (newSem.subjects.length > 0) {
+                            allExtractedSemesters.push(newSem);
+                        }
+                    });
+
+                } catch (err) {
+                    console.error('Processing error:', err);
+                    UI.showToast(`Error processing ${file.name}: ${err.message}`, 'error');
+                }
             }
+
+            if (allExtractedSemesters.length === 0) {
+                document.getElementById('fileInput').value = '';
+                return;
+            }
+
+            // ✅ Deduplicate within upload (last occurrence wins)
+            const uniqueNewSemesters = new Map();
+            allExtractedSemesters.forEach(sem => {
+                uniqueNewSemesters.set(sem.semester, sem);
+            });
+
+            // ✅ FULL REPLACE — wipe all old data, show only what was uploaded
+            this.semesters = Array.from(uniqueNewSemesters.values())
+                .map(newSem => ({
+                    semester: newSem.semester,
+                    subjects: newSem.subjects.map(s => ({ ...s, isManual: false }))
+                }))
+                .filter(sem => sem.subjects.length > 0)
+                .sort((a, b) => a.semester - b.semester);
+
+            console.log('Final semesters after upload:',
+                this.semesters.map(s => `S${s.semester}(${s.subjects.length})`));
+
+            this.render();
+            this.saveToStorage();
+
+            UI.showToast(`Loaded ${this.semesters.length} semester(s) successfully.`, 'success');
+        } finally {
+            this._processing = false;
+            document.getElementById('fileInput').value = '';
         }
-
-        this.semesters = this.semesters.filter(sem => sem.subjects.length > 0);
-
-        this.render();
-        this.saveToStorage();
-        document.getElementById('fileInput').value = '';
     },
 
     addSemester() {
@@ -233,7 +227,7 @@ const App = {
 
         this.semesters.push({
             semester: nextNum,
-            subjects: [{ name: '', code: '', grade: '', credits: '' }]
+            subjects: [{ name: '', code: '', grade: '', credits: '', isManual: true }]
         });
 
         this.semesters.sort((a, b) => a.semester - b.semester);
@@ -254,7 +248,7 @@ const App = {
 
     addSubject(semIndex) {
         this.semesters[semIndex].subjects.push({
-            name: '', code: '', grade: '', credits: ''
+            name: '', code: '', grade: '', credits: '', isManual: true
         });
         this.render();
         this.saveToStorage();
@@ -263,7 +257,9 @@ const App = {
     removeSubject(semIndex, subIndex) {
         this.semesters[semIndex].subjects.splice(subIndex, 1);
         if (this.semesters[semIndex].subjects.length === 0) {
-            this.semesters[semIndex].subjects.push({ name: '', code: '', grade: '', credits: '' });
+            this.semesters[semIndex].subjects.push({
+                name: '', code: '', grade: '', credits: '', isManual: true
+            });
         }
         this.render();
         this.saveToStorage();
@@ -272,6 +268,9 @@ const App = {
     updateSubject(semIndex, subIndex, field, value) {
         if (this.semesters[semIndex] && this.semesters[semIndex].subjects[subIndex]) {
             this.semesters[semIndex].subjects[subIndex][field] = value;
+            if (!this.semesters[semIndex].subjects[subIndex].isManual) {
+                this.semesters[semIndex].subjects[subIndex].isManual = true;
+            }
             this.saveToStorage();
             this.render();
         }
@@ -284,11 +283,13 @@ const App = {
 
     saveToStorage() {
         try {
-            // Only save if there's actual data
             if (this.semesters && this.semesters.length > 0) {
                 localStorage.setItem('gpa-semesters', JSON.stringify(this.semesters));
                 this.savedDataCache = this.semesters;
                 this.savedDataExists = true;
+            } else {
+                // ✅ If no semesters, also clear storage
+                localStorage.removeItem('gpa-semesters');
             }
         } catch (e) {
             console.warn('Could not save to localStorage', e);
