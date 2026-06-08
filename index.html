@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGPA & CGPA Calculator | KTU B.Tech</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>GPA Calculator</span>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+        <!-- Upload Section -->
+        <section class="card upload-section">
+            <h2 class="section-title">
+                <i class="fas fa-upload"></i>
+                Upload Score Card
+            </h2>
+            <p class="section-desc">Upload your KTU grade card as PDF. Supports multiple semesters in a single document.</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-placeholder" id="uploadPlaceholder">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop your file here</p>
+                    <span>or</span>
+                    <label class="btn btn-primary upload-btn">
+                        <i class="fas fa-folder-open"></i> Browse Files
+                        <input type="file" id="fileInput" accept="image/*,.pdf" hidden multiple>
+                    </label>
+                    <p class="file-types">Supports: KTU Semester Grade Card PDF</p>
+                </div>
+            </div>
+
+            <div class="processing-status hidden" id="processingStatus">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">Processing...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Manual Entry Section -->
+        <section class="card manual-section">
+            <div class="section-header-row">
+                <h2 class="section-title">
+                    <i class="fas fa-edit"></i>
+                    Semester Data
+                </h2>
+                <div class="header-buttons">
+                    <button class="btn btn-secondary btn-sm" id="clearAllBtn">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="addSemesterBtn">
+                        <i class="fas fa-plus"></i> Add Semester
+                    </button>
+                </div>
+            </div>
+            <p class="section-desc">Add semesters manually or edit extracted data. Always verify grades and credits from your original score card.</p>
+
+            <div id="semestersContainer"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card results-section hidden" id="resultsSection">
+            <h2 class="section-title">
+                <i class="fas fa-chart-bar"></i>
+                Results
+            </h2>
+            <p class="section-desc">
+                <i class="fas fa-info-circle"></i>
+                Calculated strictly using the official KTU formula: <strong>SGPA / CGPA = Σ(Ci × GPi) / ΣCi</strong>
+            </p>
+
+            <div class="results-grid" id="sgpaResults"></div>
+
+            <div class="cgpa-display" id="cgpaDisplay">
+                <div class="cgpa-card">
+                    <div class="cgpa-label">Cumulative GPA (CGPA)</div>
+                    <div class="cgpa-value" id="cgpaValue">0.00</div>
+                    <div class="cgpa-details">
+                        <span id="totalCreditsDisplay">Total Credits: 0</span>
+                        <span id="percentageDisplay">Percentage: 0%</span>
+                        <span id="classificationDisplay">Classification: -</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-actions">
+                <button class="btn btn-secondary" id="exportPdfBtn">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+                <button class="btn btn-secondary" id="exportExcelBtn">
+                    <i class="fas fa-file-excel"></i> Export Excel
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <p>Developed by <strong>Amal Dev T S</strong></p>
+                <p class="footer-note">KTU B.Tech SGPA & CGPA Calculator</p>
+            </div>
+            <div class="social-links">
+                <a href="https://github.com/amaldev-ts" target="_blank" rel="noopener noreferrer" class="social-btn github" aria-label="GitHub">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://instagram.com/amaldev_ts" target="_blank" rel="noopener noreferrer" class="social-btn instagram" aria-label="Instagram">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="mailto:amalts588@gmail.com" class="social-btn email" aria-label="Email">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script src="js/calculator.js"></script>
+    <script src="js/ocr.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGPA & CGPA Calculator | KTU B.Tech</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+   
+
+
+
+
+
+
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>GPA Calculator</span>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+        <!-- Upload Section -->
+        <section class="card upload-section">
+            <h2 class="section-title">
+                <i class="fas fa-upload"></i>
+                Upload Score Card
+            </h2>
+            <p class="section-desc">Upload your KTU grade card as an image or PDF. Supports multiple semesters in a single document.</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-placeholder" id="uploadPlaceholder">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop your file here</p>
+                    <span>or</span>
+                    <label class="btn btn-primary upload-btn">
+                        <i class="fas fa-folder-open"></i> Browse Files
+                        <input type="file" id="fileInput" accept="image/*,.pdf" hidden multiple>
+                    </label>
+                    <p class="file-types">Supports: KTU Semester Grade Card PDF</p>
+                </div>
+            </div>
+
+            <div class="processing-status hidden" id="processingStatus">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">Processing...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Manual Entry Section -->
+        <section class="card manual-section">
+            <div class="section-header-row">
+                <h2 class="section-title">
+                    <i class="fas fa-edit"></i>
+                    Semester Data
+                </h2>
+                <div class="header-buttons">
+                    <button class="btn btn-secondary btn-sm" id="clearAllBtn">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="addSemesterBtn">
+                        <i class="fas fa-plus"></i> Add Semester
+                    </button>
+                </div>
+            </div>
+            <p class="section-desc">Add semesters manually or edit extracted data. Always verify grades and credits from your original score card.</p>
+
+            <div id="semestersContainer"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="card results-section hidden" id="resultsSection">
+            <h2 class="section-title">
+                <i class="fas fa-chart-bar"></i>
+                Results
+            </h2>
+            <p class="section-desc">
+                <i class="fas fa-info-circle"></i>
+                Calculated strictly using the official KTU formula: <strong>SGPA / CGPA = Σ(Ci × GPi) / ΣCi</strong>
+            </p>
+
+            <div class="results-grid" id="sgpaResults"></div>
+
+            <div class="cgpa-display" id="cgpaDisplay">
+                <div class="cgpa-card">
+                    <div class="cgpa-label">Cumulative GPA (CGPA)</div>
+                    <div class="cgpa-value" id="cgpaValue">0.00</div>
+                    <div class="cgpa-details">
+                        <span id="totalCreditsDisplay">Total Credits: 0</span>
+                        <span id="percentageDisplay">Percentage: 0%</span>
+                        <span id="classificationDisplay">Classification: -</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-actions">
+                <button class="btn btn-secondary" id="exportPdfBtn">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+                <button class="btn btn-secondary" id="exportExcelBtn">
+                    <i class="fas fa-file-excel"></i> Export Excel
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <p>Developed by <strong>Amal Dev T S</strong></p>
+                <p class="footer-note">KTU B.Tech SGPA & CGPA Calculator</p>
+            </div>
+            <div class="social-links">
+                <a href="https://github.com/amaldev-ts" target="_blank" rel="noopener noreferrer" class="social-btn github" aria-label="GitHub">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://instagram.com/amaldev_ts" target="_blank" rel="noopener noreferrer" class="social-btn instagram" aria-label="Instagram">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="mailto:amalts588@gmail.com" class="social-btn email" aria-label="Email">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Restore Modal -->
+    <div class="modal-overlay hidden" id="restoreModal">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3 class="modal-title">Welcome Back!</h3>
+            <p class="modal-text">
+                We found your previous session data with 
+                <strong id="restoreSemCount">0</strong> semester(s).
+                <br>Would you like to restore it or start fresh?
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="startFreshBtn">
+                    <i class="fas fa-file"></i> Start Fresh
+                </button>
+                <button class="btn btn-primary" id="restoreBtn">
+                    <i class="fas fa-download"></i> Restore Previous
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/theme.js"></script>
+    <script src="js/calculator.js"></script>
+    <script src="js/ocr.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
+
+
+</html>
