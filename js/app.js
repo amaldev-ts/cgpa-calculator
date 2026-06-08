@@ -217,6 +217,93 @@ const App = {
         }
     },
 
+    /**
+     * ✅ NEW: Handle PDF upload for a SPECIFIC semester
+     * Replaces only that semester's data with extracted PDF data
+     */
+    async handleSemesterUpload(semIndex, files) {
+        if (!files || files.length === 0) return;
+        if (this._processing) return;
+        if (!this.semesters[semIndex]) return;
+
+        this._processing = true;
+        const targetSemester = this.semesters[semIndex];
+        const targetSemNum = targetSemester.semester;
+
+        try {
+            const file = files[0]; // Only first file
+            UI.showToast(`Processing: ${file.name}`, 'info');
+
+            const extractedSemesters = await OCRProcessor.processFile(
+                file,
+                (text, pct) => UI.updateProgress(text, pct)
+            );
+
+            if (extractedSemesters.length === 0) {
+                UI.showToast('Could not extract data from PDF.', 'error');
+                return;
+            }
+
+            // Find matching semester in extracted data
+            let matchedSem = extractedSemesters.find(s => s.semester === targetSemNum);
+
+            // If no match, take the first one (user might have uploaded a different sem PDF)
+            if (!matchedSem) {
+                if (extractedSemesters.length === 1) {
+                    matchedSem = extractedSemesters[0];
+                    UI.showToast(
+                        `PDF contains Semester ${matchedSem.semester} data. Loading into Semester ${targetSemNum} slot.`,
+                        'info'
+                    );
+                } else {
+                    UI.showToast(
+                        `PDF doesn't contain Semester ${targetSemNum} data. Found: ${extractedSemesters.map(s => 'S' + s.semester).join(', ')}`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+
+            // Clean subjects
+            matchedSem.subjects = matchedSem.subjects.filter(s =>
+                s &&
+                s.code &&
+                s.code.trim() !== '' &&
+                s.grade &&
+                s.grade.trim() !== '' &&
+                s.credits !== undefined &&
+                s.credits !== '' &&
+                s.credits !== null &&
+                !isNaN(parseFloat(s.credits))
+            );
+
+            if (matchedSem.subjects.length === 0) {
+                UI.showToast('No valid subjects found in PDF.', 'error');
+                return;
+            }
+
+            // ✅ Replace ONLY this semester
+            this.semesters[semIndex] = {
+                semester: targetSemNum,
+                subjects: matchedSem.subjects.map(s => ({ ...s, isManual: false }))
+            };
+
+            this.render();
+            this.saveToStorage();
+
+            UI.showToast(
+                `Semester ${targetSemNum} updated successfully with ${matchedSem.subjects.length} subject(s).`,
+                'success'
+            );
+
+        } catch (err) {
+            console.error('Processing error:', err);
+            UI.showToast(`Error processing PDF: ${err.message}`, 'error');
+        } finally {
+            this._processing = false;
+        }
+    },
+
     addSemester() {
         const existingNums = this.semesters.map(s => s.semester);
         let nextNum = 1;

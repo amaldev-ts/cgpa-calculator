@@ -42,6 +42,19 @@ const UI = {
         }, 3500);
     },
 
+    /**
+     * Check if semester is "empty" (just added, no real data)
+     */
+    isEmptySemester(semData) {
+        if (!semData.subjects || semData.subjects.length === 0) return true;
+        // Empty if ALL subjects have no code, no grade, no credits
+        return semData.subjects.every(s =>
+            (!s.code || s.code.trim() === '') &&
+            (!s.grade || s.grade.trim() === '') &&
+            (!s.credits || s.credits === '' || s.credits === 0)
+        );
+    },
+
     createSemesterBlock(semData, index, allSemesters) {
         const block = document.createElement('div');
         block.className = 'semester-block';
@@ -50,6 +63,27 @@ const UI = {
         const sgpaResult = Calculator.calculateSGPA(semData.subjects);
         const breakdown = Calculator.getBreakdown(semData.subjects);
         const cumulativeCgpa = Calculator.calculateCumulativeCGPA(allSemesters, index);
+
+        // ✅ Show upload button ONLY if semester is empty (newly added)
+        const isEmpty = this.isEmptySemester(semData);
+
+        const uploadBtnHtml = isEmpty ? `
+            <label class="upload-sem-btn" title="Upload PDF for this semester">
+                <i class="fas fa-file-upload"></i> Upload PDF
+                <input type="file" 
+                       accept=".pdf" 
+                       hidden
+                       onchange="App.handleSemesterUpload(${index}, this.files); this.value='';">
+            </label>
+        ` : '';
+
+        // ✅ Show "empty semester" hint banner when empty
+        const emptyHintHtml = isEmpty ? `
+            <div class="empty-sem-hint">
+                <i class="fas fa-info-circle"></i>
+                <span>This semester is empty. Upload a PDF or add subjects manually.</span>
+            </div>
+        ` : '';
 
         block.innerHTML = `
             <div class="semester-header" onclick="UI.toggleSemester(this)">
@@ -66,6 +100,7 @@ const UI = {
                 </div>
             </div>
             <div class="semester-body">
+                ${emptyHintHtml}
                 <div class="subject-table-wrapper">
                     <table class="subject-table">
                         <thead>
@@ -86,6 +121,7 @@ const UI = {
                     <button class="add-subject-btn" onclick="App.addSubject(${index})">
                         <i class="fas fa-plus"></i> Add Subject
                     </button>
+                    ${uploadBtnHtml}
                     <button class="add-semester-inline-btn" onclick="App.addSemester()">
                         <i class="fas fa-layer-group"></i> Add Next Semester
                     </button>
