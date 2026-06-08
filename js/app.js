@@ -145,7 +145,6 @@ const App = {
         this._processing = true;
 
         try {
-            // ✅ Collect all semesters from this upload batch
             const allExtractedSemesters = [];
 
             for (const file of files) {
@@ -163,7 +162,6 @@ const App = {
                     }
 
                     extractedSemesters.forEach(newSem => {
-                        // Clean extracted subjects
                         newSem.subjects = newSem.subjects.filter(s =>
                             s &&
                             s.code &&
@@ -192,13 +190,12 @@ const App = {
                 return;
             }
 
-            // ✅ Deduplicate within upload (last occurrence wins)
             const uniqueNewSemesters = new Map();
             allExtractedSemesters.forEach(sem => {
                 uniqueNewSemesters.set(sem.semester, sem);
             });
 
-            // ✅ FULL REPLACE — wipe all old data, show only what was uploaded
+            // ✅ FULL REPLACE — wipe old, show only uploaded
             this.semesters = Array.from(uniqueNewSemesters.values())
                 .map(newSem => ({
                     semester: newSem.semester,
@@ -288,7 +285,6 @@ const App = {
                 this.savedDataCache = this.semesters;
                 this.savedDataExists = true;
             } else {
-                // ✅ If no semesters, also clear storage
                 localStorage.removeItem('gpa-semesters');
             }
         } catch (e) {

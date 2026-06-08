@@ -91,6 +91,42 @@ const Calculator = {
     },
 
     /**
+     * ✅ NEW: Calculate cumulative CGPA up to a specific semester index
+     * Uses same KTU formula: CGPA = Σ(Ci × GPi) / ΣCi
+     * @param {Array} semesters - All semesters array
+     * @param {Number} uptoIndex - Calculate CGPA up to this index (inclusive)
+     * @returns {Object} { cgpa, totalCredits }
+     */
+    calculateCumulativeCGPA(semesters, uptoIndex) {
+        let totalCredits = 0;
+        let totalWeighted = 0;
+
+        for (let i = 0; i <= uptoIndex && i < semesters.length; i++) {
+            const sem = semesters[i];
+            if (!sem.subjects) continue;
+
+            sem.subjects.forEach(sub => {
+                const credits = parseFloat(sub.credits) || 0;
+                const grade = sub.grade ? sub.grade.toUpperCase().trim() : '';
+                const gp = GRADE_POINTS[grade];
+
+                if (credits > 0 && gp !== undefined) {
+                    totalCredits += credits;
+                    totalWeighted += credits * gp;
+                }
+            });
+        }
+
+        if (totalCredits === 0) return { cgpa: 0, totalCredits: 0 };
+
+        const cgpa = totalWeighted / totalCredits;
+        return {
+            cgpa: Math.round(cgpa * 100) / 100,
+            totalCredits
+        };
+    },
+
+    /**
      * Get detailed calculation breakdown for transparency
      */
     getBreakdown(subjects) {

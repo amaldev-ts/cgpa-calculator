@@ -51,26 +51,14 @@
             <div class="upload-area" id="uploadArea">
                 <div class="upload-placeholder" id="uploadPlaceholder">
                     <i class="fas fa-cloud-upload-alt"></i>
-
                     <p>Drag & Drop your PDF here</p>
-
                     <span>or</span>
-
                     <label class="btn btn-primary upload-btn">
                         <i class="fas fa-folder-open"></i>
                         Browse PDF
-                        <input
-                            type="file"
-                            id="fileInput"
-                            accept=".pdf"
-                            hidden
-                            multiple
-                        >
+                        <input type="file" id="fileInput" accept=".pdf" hidden multiple>
                     </label>
-
-                    <p class="file-types">
-                        Supported Format: KTU Grade Card PDF
-                    </p>
+                    <p class="file-types">Supported Format: KTU Grade Card PDF</p>
                 </div>
             </div>
 
@@ -79,10 +67,7 @@
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
-
-                    <span class="progress-text" id="progressText">
-                        Processing...
-                    </span>
+                    <span class="progress-text" id="progressText">Processing...</span>
                 </div>
             </div>
         </section>
@@ -94,24 +79,16 @@
                     <i class="fas fa-edit"></i>
                     Semester Data
                 </h2>
-
                 <div class="header-buttons">
                     <button class="btn btn-secondary btn-sm" id="clearAllBtn">
-                        <i class="fas fa-trash"></i>
-                        Clear All
+                        <i class="fas fa-trash"></i> Clear All
                     </button>
-
                     <button class="btn btn-primary btn-sm" id="addSemesterBtn">
-                        <i class="fas fa-plus"></i>
-                        Add Semester
+                        <i class="fas fa-plus"></i> Add Semester
                     </button>
                 </div>
             </div>
-
-            <p class="section-desc">
-                Add semesters manually or edit extracted data.
-            </p>
-
+            <p class="section-desc">Add semesters manually or edit extracted data.</p>
             <div id="semestersContainer"></div>
         </section>
 
@@ -126,39 +103,22 @@
 
             <div class="cgpa-display" id="cgpaDisplay">
                 <div class="cgpa-card">
-                    <div class="cgpa-label">
-                        Cumulative GPA (CGPA)
-                    </div>
-
-                    <div class="cgpa-value" id="cgpaValue">
-                        0.00
-                    </div>
-
+                    <div class="cgpa-label">Cumulative GPA (CGPA)</div>
+                    <div class="cgpa-value" id="cgpaValue">0.00</div>
                     <div class="cgpa-details">
-                        <span id="totalCreditsDisplay">
-                            Total Credits: 0
-                        </span>
-
-                        <span id="percentageDisplay">
-                            Percentage: 0%
-                        </span>
-
-                        <span id="classificationDisplay">
-                            Classification: -
-                        </span>
+                        <span id="totalCreditsDisplay">Total Credits: 0</span>
+                        <span id="percentageDisplay">Percentage: 0%</span>
+                        <span id="classificationDisplay">Classification: -</span>
                     </div>
                 </div>
             </div>
 
             <div class="export-actions">
                 <button class="btn btn-secondary" id="exportPdfBtn">
-                    <i class="fas fa-file-pdf"></i>
-                    Export PDF
+                    <i class="fas fa-file-pdf"></i> Export PDF
                 </button>
-
                 <button class="btn btn-secondary" id="exportExcelBtn">
-                    <i class="fas fa-file-excel"></i>
-                    Export Excel
+                    <i class="fas fa-file-excel"></i> Export Excel
                 </button>
             </div>
         </section>
@@ -169,24 +129,16 @@
     <footer class="footer">
         <div class="container footer-content">
             <div class="footer-info">
-                <p>
-                    Developed by <strong>Amal Dev T S</strong>
-                </p>
-
-                <p class="footer-note">
-                    KTU B.Tech SGPA & CGPA Calculator
-                </p>
+                <p>Developed by <strong>Amal Dev T S</strong></p>
+                <p class="footer-note">KTU B.Tech SGPA & CGPA Calculator</p>
             </div>
-
             <div class="social-links">
                 <a href="https://github.com/amaldev-ts" target="_blank" class="social-btn">
                     <i class="fab fa-github"></i>
                 </a>
-
                 <a href="https://instagram.com/amaldev_ts" target="_blank" class="social-btn">
                     <i class="fab fa-instagram"></i>
                 </a>
-
                 <a href="mailto:amalts588@gmail.com" class="social-btn">
                     <i class="fas fa-envelope"></i>
                 </a>
@@ -203,21 +155,16 @@
             <div class="modal-icon">
                 <i class="fas fa-history"></i>
             </div>
-
             <h3 class="modal-title">Welcome Back!</h3>
-
             <p class="modal-text">
                 We found your previous session data with
-                <strong id="restoreSemCount">0</strong> semester(s).
-                <br>
+                <strong id="restoreSemCount">0</strong> semester(s).<br>
                 Would you like to restore it or start fresh?
             </p>
-
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="startFreshBtn">
                     <i class="fas fa-file"></i> Start Fresh
                 </button>
-
                 <button class="btn btn-primary" id="restoreBtn">
                     <i class="fas fa-download"></i> Restore Previous
                 </button>

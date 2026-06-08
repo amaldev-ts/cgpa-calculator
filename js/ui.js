@@ -1,9 +1,29 @@
 // UI Manager
 const UI = {
+    _lastToastMessage: null,
+    _lastToastTime: 0,
+
     showToast(message, type = 'info') {
         const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const now = Date.now();
+        if (this._lastToastMessage === message && (now - this._lastToastTime) < 500) {
+            return;
+        }
+        this._lastToastMessage = message;
+        this._lastToastTime = now;
+
+        const existing = container.querySelectorAll('.toast');
+        existing.forEach(t => {
+            if (t.dataset.message === message) {
+                t.remove();
+            }
+        });
+
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
+        toast.dataset.message = message;
 
         const icons = {
             success: 'fa-check-circle',
@@ -22,13 +42,14 @@ const UI = {
         }, 3500);
     },
 
-    createSemesterBlock(semData, index) {
+    createSemesterBlock(semData, index, allSemesters) {
         const block = document.createElement('div');
         block.className = 'semester-block';
         block.dataset.semIndex = index;
 
         const sgpaResult = Calculator.calculateSGPA(semData.subjects);
         const breakdown = Calculator.getBreakdown(semData.subjects);
+        const cumulativeCgpa = Calculator.calculateCumulativeCGPA(allSemesters, index);
 
         block.innerHTML = `
             <div class="semester-header" onclick="UI.toggleSemester(this)">
@@ -38,6 +59,7 @@ const UI = {
                 </div>
                 <div class="semester-header-right">
                     <span class="semester-sgpa-badge">SGPA: ${sgpaResult.sgpa.toFixed(2)}</span>
+                    <span class="semester-cgpa-badge">CGPA: ${cumulativeCgpa.cgpa.toFixed(2)}</span>
                     <button class="btn-icon danger" onclick="event.stopPropagation(); App.removeSemester(${index})" title="Remove Semester">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -151,7 +173,7 @@ const UI = {
 
         container.innerHTML = '';
         semesters.forEach((sem, idx) => {
-            container.appendChild(this.createSemesterBlock(sem, idx));
+            container.appendChild(this.createSemesterBlock(sem, idx, semesters));
         });
     },
 
@@ -167,23 +189,91 @@ const UI = {
         section.classList.remove('hidden');
 
         sgpaContainer.innerHTML = '';
-        semesters.forEach(sem => {
+        semesters.forEach((sem, idx) => {
             const result = Calculator.calculateSGPA(sem.subjects);
+            const cumCgpa = Calculator.calculateCumulativeCGPA(semesters, idx);
+
             const card = document.createElement('div');
             card.className = 'sgpa-card';
             card.innerHTML = `
                 <div class="sem-label">Semester ${sem.semester}</div>
                 <div class="sgpa-value">${result.sgpa.toFixed(2)}</div>
                 <div class="credits-label">${result.totalCredits} Credits</div>
+                <div class="cgpa-mini">CGPA: <strong>${cumCgpa.cgpa.toFixed(2)}</strong></div>
             `;
             sgpaContainer.appendChild(card);
         });
+
+        this.renderProgressTable(semesters);
 
         const cgpaResult = Calculator.calculateCGPA(semesters);
         document.getElementById('cgpaValue').textContent = cgpaResult.cgpa.toFixed(2);
         document.getElementById('totalCreditsDisplay').textContent = `Total Credits: ${cgpaResult.totalCredits}`;
         document.getElementById('percentageDisplay').textContent = `Percentage: ${cgpaResult.percentage.toFixed(2)}%`;
         document.getElementById('classificationDisplay').textContent = cgpaResult.classification;
+    },
+
+    renderProgressTable(semesters) {
+        let progressSection = document.getElementById('progressTableSection');
+
+        if (!progressSection) {
+            progressSection = document.createElement('div');
+            progressSection.id = 'progressTableSection';
+            progressSection.className = 'progress-table-section';
+
+            const cgpaDisplay = document.getElementById('cgpaDisplay');
+            cgpaDisplay.parentNode.insertBefore(progressSection, cgpaDisplay);
+        }
+
+        let rows = '';
+        let prevCgpa = null;
+
+        semesters.forEach((sem, idx) => {
+            const sgpa = Calculator.calculateSGPA(sem.subjects);
+            const cumCgpa = Calculator.calculateCumulativeCGPA(semesters, idx);
+
+            let trendIcon = '';
+            if (prevCgpa !== null) {
+                if (cumCgpa.cgpa > prevCgpa) {
+                    trendIcon = '<i class="fas fa-arrow-up trend-up" title="Improving"></i>';
+                } else if (cumCgpa.cgpa < prevCgpa) {
+                    trendIcon = '<i class="fas fa-arrow-down trend-down" title="Declining"></i>';
+                } else {
+                    trendIcon = '<i class="fas fa-minus trend-same" title="Same"></i>';
+                }
+            }
+            prevCgpa = cumCgpa.cgpa;
+
+            rows += `
+                <tr>
+                    <td>Semester ${sem.semester}</td>
+                    <td>${sgpa.totalCredits}</td>
+                    <td><strong>${sgpa.sgpa.toFixed(2)}</strong></td>
+                    <td><strong>${cumCgpa.cgpa.toFixed(2)}</strong> ${trendIcon}</td>
+                </tr>
+            `;
+        });
+
+        progressSection.innerHTML = `
+            <h3 class="progress-title">
+                <i class="fas fa-chart-line"></i> Semester-wise Progress
+            </h3>
+            <div class="progress-table-wrapper">
+                <table class="progress-table">
+                    <thead>
+                        <tr>
+                            <th>Semester</th>
+                            <th>Credits</th>
+                            <th>SGPA</th>
+                            <th>Cumulative CGPA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
     },
 
     updateProgress(text, percent) {
