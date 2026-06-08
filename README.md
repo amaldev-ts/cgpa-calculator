@@ -41,23 +41,6 @@ A modern, intelligent web application that automatically calculates **SGPA** and
 - **🔔 Toast Notifications** — Clear, non-intrusive feedback for every action
 - **🎓 Professional UI** — Clean, distraction-free design built for students
 
----
-
-## 📸 Screenshots
-
-<div align="center">
-
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Light Mode](https://via.placeholder.com/400x250?text=Light+Mode) | ![Dark Mode](https://via.placeholder.com/400x250?text=Dark+Mode) |
-
-| PDF Extraction | Results & Export |
-|----------------|------------------|
-| ![Extraction](https://via.placeholder.com/400x250?text=PDF+Extraction) | ![Results](https://via.placeholder.com/400x250?text=Results) |
-
-</div>
-
----
 
 ## 🎯 Why This Project?
 
